@@ -1,4 +1,4 @@
-# ☁️ Nemo Cloud File Storage
+# Nemo Cloud File Storage
 
 ![Nemo Storage Banner](./public/nemo_storage_banner.jpg)
 
@@ -7,24 +7,24 @@
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-JS_v2.45-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
 **A high-performance, feature-rich cloud file management system built with React, Vite, and Supabase.**  
-*Featuring a sleek cyberpunk glassmorphism UI, hybrid storage fallback, interactive analytics, and 30-day trash lifecycle management.*
+*Featuring a cyberpunk glassmorphism UI, hybrid storage fallback, interactive analytics, and 30-day trash lifecycle management.*
 
-[Features](#-key-features) • [Design System](#-design-system--aesthetics) • [Tech Stack](#-tech-stack) • [Getting Started](#-getting-started) • [Supabase Setup](#-supabase-setup)
+[Features](#key-features) • [Design System](#design-system--aesthetics) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Supabase Setup](#supabase-setup) • [License](#license)
 
 </div>
 
 ---
 
-## 🎨 Design System & Aesthetics
+## Design System & Aesthetics
 
-Nemo Cloud Storage features a custom-built **Glassmorphism Dark Theme** designed with HSL color tokens, micro-animations, and dynamic visual feedback.
+Nemo Cloud Storage features a custom-built Glassmorphism Dark Theme designed with HSL color tokens, micro-animations, and dynamic visual feedback.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  ✨ GLASSMORPHISM PALETTE & UI COMPONENTS                               │
+│  GLASSMORPHISM PALETTE & UI COMPONENTS                                 │
 ├────────────────────────────────────────────────────────────────────────┤
 │  Primary Neon Accent  : hsl(190, 100%, 50%)  [#00f2ff - Cyan Glow]   │
 │  Secondary Violet     : hsl(270, 90%, 65%)   [#ad52ff - Neon Violet] │
@@ -35,52 +35,52 @@ Nemo Cloud Storage features a custom-built **Glassmorphism Dark Theme** designed
 
 ### UI Highlights
 - **Dynamic Glassmorphism**: Translucent card containers with subtle borders, glowing drop-shadows, and smooth backdrop blurs.
-- **Interactive Storage Gauge**: Live visual progress bar with dynamic color transitions (Cyan → Yellow → Crimson) based on storage capacity.
+- **Interactive Storage Gauge**: Live visual progress bar with dynamic color transitions (Cyan to Yellow to Crimson) based on storage capacity.
 - **Responsive Layout**: Mobile-first fluid navigation with collapsible sidebars and responsive file grids.
-- **Micro-Animations**: Hover elevation, subtle pulsing status badges, modal scale-in effects, and smooth view transitions.
+- **Micro-Animations**: Hover elevation, subtle status badges, modal scale-in effects, and smooth view transitions.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 📊 Interactive Storage Dashboard
-- Real-time storage capacity gauge showing used space vs total storage limit.
-- Category distribution charts breaking down storage consumption across **Documents**, **Images**, **Audio**, **Video**, and **Archives**.
+### Interactive Storage Dashboard
+- Real-time storage capacity gauge showing used space versus total storage limit.
+- Category distribution breakdown across Documents, Images, Audio, Video, and Archives.
 - Quick action shortcuts for instant file uploads and capacity management.
 
-### 🗂️ Advanced File Management & Search
+### Advanced File Management & Search
 - Multi-category filtering and real-time instant search by title, extension, or tags.
 - Favorite files toggle for instant access to starred items.
-- Dual layout modes: **Grid View** with visual thumbnails and **List View** for compact data density.
+- Dual layout modes: Grid View with visual thumbnails and List View for compact data density.
 
-### 👁️ Built-in File Previewer
+### Built-in File Previewer
 - In-app preview modal supporting image rendering, video playback, audio stream player, and document text view.
 - Metadata panel showing file size, MIME type, upload timestamp, tags, and direct storage URLs.
 
-### 🗑️ Smart Trash Bin & Auto-Purge
-- Soft-delete capability with a **30-Day Auto-Purge Lifecycle**.
+### Smart Trash Bin & Auto-Purge
+- Soft-delete capability with a 30-Day Auto-Purge Lifecycle.
 - Live countdown badge showing days remaining until permanent deletion.
 - One-click file restoration back to the active drive or immediate permanent deletion.
 
-### ⚡ Hybrid Storage Architecture
-- Works out-of-the-box using **Browser Local Storage & Indexed DB mock storage**.
-- Connects seamlessly to **Supabase Storage Buckets & PostgreSQL** when environment credentials are configured.
+### Hybrid Storage Architecture
+- Operates out-of-the-box using Browser Local Storage & Indexed DB mock storage.
+- Connects seamlessly to Supabase Storage Buckets & PostgreSQL when environment credentials are configured.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
 | **Frontend Framework** | `React 18.3` | Modular component architecture with Hooks & Context |
-| **Build Tool** | `Vite 5.4` | Lightning-fast HMR and optimized production bundles |
+| **Build Tool** | `Vite 5.4` | Fast HMR and optimized production bundles |
 | **Icons & UI** | `Lucide React` | Clean, modern vector icon set |
 | **Database & Storage** | `Supabase JS` | Cloud Object Storage buckets + PostgreSQL RLS policies |
 | **Styling** | `Vanilla CSS3` | Custom design tokens, CSS variables, glassmorphism, animations |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Cloud File Storage/
@@ -108,19 +108,20 @@ Cloud File Storage/
 │   └── main.jsx                   # Application entry point
 ├── .env                           # Environment configuration
 ├── .gitignore                     # Git exclusion rules
+├── LICENSE                        # Open source MIT License
 ├── package.json                   # Dependencies & scripts
 └── vite.config.js                 # Vite configuration
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v16.0 or higher)
-- [npm](https://www.npmjs.com/) or `yarn` / `pnpm`
+- Node.js (v16.0 or higher)
+- npm or yarn / pnpm
 
-### Installation & Run
+### Installation & Execution
 
 1. **Clone the repository**:
    ```bash
@@ -143,7 +144,7 @@ Cloud File Storage/
 
 ---
 
-## 🗄️ Supabase Setup (Optional)
+## Supabase Setup (Optional)
 
 To enable cloud storage persistence, configure your Supabase instance:
 
@@ -153,7 +154,7 @@ To enable cloud storage persistence, configure your Supabase instance:
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
    ```
 
-2. Execute the following SQL snippet in your **Supabase SQL Editor** to create the storage bucket:
+2. Execute the following SQL snippet in your Supabase SQL Editor to create the storage bucket:
 
 ```sql
 -- Create public storage bucket for Nemo Storage
@@ -177,12 +178,6 @@ USING (bucket_id = 'nemo-files');
 
 ---
 
-## 📜 License
+## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-<div align="center">
-  <sub>Built with ❤️ for seamless, beautiful cloud storage management.</sub>
-</div>
+This project is open-source software licensed under the [MIT License](./LICENSE). Feel free to use, modify, and distribute it.
