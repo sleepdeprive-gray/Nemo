@@ -1,4 +1,4 @@
-# Nemo Cloud Storage Integrated Solution
+# Nemo
 
 ![Nemo Storage Banner](./public/nemo_storage_banner.jpg)
 
@@ -60,7 +60,7 @@
 ## Project Structure
 
 ```
-Cloud File Storage/
+nemo/
 ├── public/
 │   └── nemo_storage_banner.jpg    # Application banner graphic
 ├── src/
@@ -102,8 +102,8 @@ Cloud File Storage/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/cloud-file-storage.git
-   cd "cloud-file-storage"
+   git clone https://github.com/your-username/nemo.git
+   cd nemo
    ```
 
 2. **Install dependencies**:
