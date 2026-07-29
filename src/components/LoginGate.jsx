@@ -81,7 +81,7 @@ export const LoginGate = ({ onAuthenticated }) => {
                 <Sparkles className="w-3 h-3 text-sky-400" /> Obsidian Vault v1.0
               </span>
               <h1 className="text-4xl font-black tracking-tight text-white flex items-center justify-center gap-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                NEMO <span className="gradient-text-cyan">CLOUD</span>
+                NEMO
               </h1>
             </div>
           </div>
