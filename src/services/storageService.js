@@ -74,6 +74,16 @@ export const uploadFileService = async (fileObj, customTags = []) => {
   const safeName = sanitizeFilename(fileObj.name);
   const category = getFileCategory(fileObj.type, safeName);
 
+  // Read text content locally if text/code file
+  let textContent = '';
+  if (fileObj.type.startsWith('text/') || safeName.endsWith('.json') || safeName.endsWith('.js') || safeName.endsWith('.sql') || safeName.endsWith('.md') || safeName.endsWith('.html') || safeName.endsWith('.css') || safeName.endsWith('.txt')) {
+    try {
+      textContent = await fileObj.text();
+    } catch (err) {
+      textContent = '';
+    }
+  }
+
   if (isSupabase) {
     const supabase = getSupabase();
     const { bucketName } = getStoredCredentials();
@@ -82,33 +92,61 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     // 1. Upload to Supabase Storage Bucket
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucketName)
-      .upload(filePath, fileObj);
+      .upload(filePath, fileObj, { upsert: true });
 
     if (uploadError) {
-      console.warn('Supabase storage upload error, falling back to blob URL:', uploadError);
+      console.warn('Supabase storage upload notification:', uploadError);
     }
 
     // 2. Get Public URL
+    const storagePath = uploadData?.path || filePath;
     const { data: publicUrlData } = supabase.storage
       .from(bucketName)
-      .getPublicUrl(filePath);
+      .getPublicUrl(storagePath);
 
-    const publicUrl = publicUrlData?.publicUrl || URL.createObjectURL(fileObj);
+    const publicUrl = publicUrlData?.publicUrl || (fileObj.type.startsWith('image/') || fileObj.type.startsWith('video/') || fileObj.type.startsWith('audio/') || fileObj.type === 'application/pdf' ? URL.createObjectURL(fileObj) : '');
+    const tags = customTags.length ? customTags : ['Uploaded'];
+
+    // 3. Store in DB if nemo_files table exists
+    const dbRecord = {
+      name: safeName,
+      size: fileObj.size,
+      type: fileObj.type || 'application/octet-stream',
+      category,
+      url: publicUrl,
+      uploaded_at: new Date().toISOString(),
+      is_favorite: false,
+      metadata: {
+        storage_path: storagePath,
+        tags
+      }
+    };
+
+    let insertedId = `f-${Date.now()}`;
+    if (supabase) {
+      try {
+        const { data: dbInsertData } = await supabase.from('nemo_files').insert([dbRecord]).select();
+        if (dbInsertData && dbInsertData[0]) {
+          insertedId = dbInsertData[0].id;
+        }
+      } catch (err) {
+        console.warn('Database table nemo_files insert fallback:', err);
+      }
+    }
 
     const newRecord = {
-      id: uploadData?.path || `f-${Date.now()}`,
+      id: insertedId,
       name: safeName,
       size: fileObj.size,
       type: fileObj.type || 'application/octet-stream',
       category,
       uploadedAt: new Date().toISOString(),
       url: publicUrl,
-      tags: customTags.length ? customTags : ['Uploaded'],
-      isFavorite: false
+      content: textContent,
+      tags,
+      isFavorite: false,
+      storagePath
     };
-
-    // Store in DB if available
-    await supabase.from('nemo_files').insert([newRecord]).catch(() => {});
 
     return newRecord;
   } else {
@@ -116,15 +154,6 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     const fileUrl = fileObj.type.startsWith('image/') || fileObj.type.startsWith('video/') || fileObj.type.startsWith('audio/') || fileObj.type === 'application/pdf'
       ? URL.createObjectURL(fileObj)
       : '';
-
-    let textContent = '';
-    if (fileObj.type.startsWith('text/') || safeName.endsWith('.json') || safeName.endsWith('.js') || safeName.endsWith('.sql') || safeName.endsWith('.md')) {
-      try {
-        textContent = await fileObj.text();
-      } catch (err) {
-        textContent = '';
-      }
-    }
 
     return {
       id: `f-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -140,3 +169,276 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     };
   }
 };
+
+/**
+ * Helper to check if a string is a valid PostgreSQL UUID
+ */
+const isValidUuid = (id) => {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
+/**
+ * Helper to extract Storage path from file object or public URL
+ */
+const extractStoragePath = (file) => {
+  if (!file) return '';
+  if (file.storagePath && !file.storagePath.startsWith('http')) {
+    return file.storagePath;
+  }
+  if (file.url && file.url.includes('/nemo-files/')) {
+    const parts = file.url.split('/nemo-files/');
+    if (parts[1]) return decodeURIComponent(parts[1].split('?')[0]);
+  }
+  return file.name || '';
+};
+
+/**
+ * Fetch files from Supabase (DB table or Storage Bucket listing)
+ */
+export const fetchSupabaseFiles = async () => {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = getSupabase();
+  const { bucketName } = getStoredCredentials();
+  if (!supabase) return null;
+
+  try {
+    // 1. Query DB table nemo_files
+    const { data: dbFiles, error: dbError } = await supabase
+      .from('nemo_files')
+      .select('*')
+      .order('uploaded_at', { ascending: false });
+
+    if (!dbError && dbFiles && dbFiles.length > 0) {
+      return dbFiles.map(row => ({
+        id: row.id,
+        name: row.name,
+        size: Number(row.size),
+        type: row.type,
+        category: row.category || getFileCategory(row.type, row.name),
+        url: row.url,
+        uploadedAt: row.uploaded_at || new Date().toISOString(),
+        isFavorite: row.is_favorite || false,
+        tags: row.metadata?.tags || ['Uploaded'],
+        storagePath: row.metadata?.storage_path || row.name
+      }));
+    }
+
+    // 2. Fallback: List directly from Storage Bucket nemo-files
+    const { data: storageObjects, error: storageError } = await supabase.storage
+      .from(bucketName)
+      .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+
+    if (!storageError && storageObjects && storageObjects.length > 0) {
+      return storageObjects.map(obj => {
+        const { data: publicUrlData } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(obj.name);
+
+        const safeName = obj.name.includes('_') ? obj.name.split('_').slice(1).join('_') : obj.name;
+        const category = getFileCategory(obj.metadata?.mimetype || '', safeName);
+
+        return {
+          id: obj.id || obj.name,
+          name: safeName,
+          size: obj.metadata?.size || 0,
+          type: obj.metadata?.mimetype || 'application/octet-stream',
+          category,
+          url: publicUrlData?.publicUrl || '',
+          uploadedAt: obj.created_at || new Date().toISOString(),
+          isFavorite: false,
+          tags: ['Supabase Storage'],
+          storagePath: obj.name
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching Supabase files:', err);
+  }
+  return null;
+};
+
+/**
+ * Fetch Trash items from Supabase nemo_trash DB table
+ */
+export const fetchSupabaseTrash = async () => {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data: trashRows, error } = await supabase
+      .from('nemo_trash')
+      .select('*')
+      .order('deleted_at', { ascending: false });
+
+    if (!error && trashRows && trashRows.length > 0) {
+      return trashRows.map(row => ({
+        id: row.id,
+        originalFileId: row.original_file_id || row.id,
+        name: row.name,
+        size: Number(row.size),
+        type: row.type,
+        category: row.category || getFileCategory(row.type, row.name),
+        url: row.url,
+        deletedAt: row.deleted_at || new Date().toISOString(),
+        isFavorite: false,
+        tags: ['Trash'],
+        storagePath: row.name
+      }));
+    }
+  } catch (err) {
+    console.warn('Error fetching Supabase trash:', err);
+  }
+  return null;
+};
+
+/**
+ * Move file to Trash in Supabase (deletes from nemo_files, inserts into nemo_trash)
+ */
+export const moveToTrashService = async (file) => {
+  if (!isSupabaseConfigured() || !file) return false;
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  try {
+    // 1. Delete row from nemo_files DB table
+    if (isValidUuid(file.id)) {
+      await supabase.from('nemo_files').delete().eq('id', file.id).catch(() => {});
+    }
+    if (file.url) {
+      await supabase.from('nemo_files').delete().eq('url', file.url).catch(() => {});
+    }
+
+    // 2. Insert row into nemo_trash DB table
+    const trashRecord = {
+      original_file_id: isValidUuid(file.id) ? file.id : null,
+      name: file.name,
+      size: file.size,
+      type: file.type || 'application/octet-stream',
+      category: file.category || 'other',
+      url: file.url || '',
+      deleted_at: new Date().toISOString()
+    };
+    if (isValidUuid(file.id)) {
+      trashRecord.id = file.id;
+    }
+
+    await supabase.from('nemo_trash').insert([trashRecord]).catch((err) => {
+      console.warn('nemo_trash insert fallback:', err);
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Error moving file to trash in Supabase:', err);
+    return false;
+  }
+};
+
+/**
+ * Restore file from Trash in Supabase (deletes from nemo_trash, re-inserts into nemo_files)
+ */
+export const restoreFromTrashService = async (trashItem) => {
+  if (!isSupabaseConfigured() || !trashItem) return false;
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  try {
+    // 1. Delete from nemo_trash DB table
+    if (isValidUuid(trashItem.id)) {
+      await supabase.from('nemo_trash').delete().eq('id', trashItem.id).catch(() => {});
+    }
+    if (trashItem.url) {
+      await supabase.from('nemo_trash').delete().eq('url', trashItem.url).catch(() => {});
+    }
+
+    // 2. Re-insert into nemo_files DB table
+    const fileRecord = {
+      name: trashItem.name,
+      size: trashItem.size,
+      type: trashItem.type || 'application/octet-stream',
+      category: trashItem.category || 'other',
+      url: trashItem.url || '',
+      uploaded_at: trashItem.uploadedAt || new Date().toISOString(),
+      is_favorite: false,
+      metadata: {
+        storage_path: trashItem.storagePath || trashItem.name,
+        tags: trashItem.tags || ['Restored']
+      }
+    };
+    if (isValidUuid(trashItem.id)) {
+      fileRecord.id = trashItem.id;
+    }
+
+    await supabase.from('nemo_files').insert([fileRecord]).catch((err) => {
+      console.warn('nemo_files re-insert fallback:', err);
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Error restoring file from trash in Supabase:', err);
+    return false;
+  }
+};
+
+/**
+ * Permanently Delete file directly from Supabase Storage Bucket & Database (both nemo_files and nemo_trash)
+ */
+export const deleteSupabaseFileService = async (file) => {
+  if (!isSupabaseConfigured() || !file) return false;
+  const supabase = getSupabase();
+  const { bucketName } = getStoredCredentials();
+  if (!supabase) return false;
+
+  try {
+    const storagePath = extractStoragePath(file);
+
+    // 1. Delete from Supabase Storage Bucket
+    if (storagePath) {
+      await supabase.storage
+        .from(bucketName)
+        .remove([storagePath]);
+      
+      // Also try with original name if different
+      if (file.name && file.name !== storagePath) {
+        await supabase.storage.from(bucketName).remove([file.name]);
+      }
+    }
+
+    // 2. Delete from Supabase DB nemo_files and nemo_trash tables
+    if (isValidUuid(file.id)) {
+      await supabase.from('nemo_files').delete().eq('id', file.id).catch(() => {});
+      await supabase.from('nemo_trash').delete().eq('id', file.id).catch(() => {});
+    }
+    if (file.url) {
+      await supabase.from('nemo_files').delete().eq('url', file.url).catch(() => {});
+      await supabase.from('nemo_trash').delete().eq('url', file.url).catch(() => {});
+    }
+    if (file.name) {
+      await supabase.from('nemo_files').delete().eq('name', file.name).catch(() => {});
+      await supabase.from('nemo_trash').delete().eq('name', file.name).catch(() => {});
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error permanently deleting file from Supabase:', err);
+    return false;
+  }
+};
+
+/**
+ * Helper to fetch text content of a remote file on demand for view/code inspection
+ */
+export const fetchFileTextContent = async (url) => {
+  if (!url) return '';
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      return await res.text();
+    }
+  } catch (e) {
+    console.warn('Failed to fetch file text content:', e);
+  }
+  return '';
+};
+
+

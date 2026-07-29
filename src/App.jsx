@@ -14,7 +14,12 @@ import {
   saveLocalFiles, 
   saveLocalTrash, 
   getCapacityLimit, 
-  uploadFileService 
+  uploadFileService,
+  fetchSupabaseFiles,
+  fetchSupabaseTrash,
+  moveToTrashService,
+  restoreFromTrashService,
+  deleteSupabaseFileService
 } from './services/storageService';
 import { isSupabaseConfigured } from './services/supabaseClient';
 
@@ -36,6 +41,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSqlGuideOpen, setIsSqlGuideOpen] = useState(false);
   const [isSupabaseActive, setIsSupabaseActive] = useState(isSupabaseConfigured());
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
 
   // Check initial authentication
   useEffect(() => {
@@ -46,12 +52,43 @@ export function App() {
   }, []);
 
   // Load files & trash data
-  useEffect(() => {
+  const refreshFilesData = async () => {
     const { files: initialFiles, trash: initialTrash } = loadLocalState();
-    setFiles(initialFiles);
-    setTrash(initialTrash);
     setCapacityLimitState(getCapacityLimit());
-    setIsSupabaseActive(isSupabaseConfigured());
+    const supabaseActive = isSupabaseConfigured();
+    setIsSupabaseActive(supabaseActive);
+
+    if (supabaseActive) {
+      setIsLoadingSupabase(true);
+      const [remoteFiles, remoteTrash] = await Promise.all([
+        fetchSupabaseFiles(),
+        fetchSupabaseTrash()
+      ]);
+
+      if (remoteFiles && remoteFiles.length > 0) {
+        setFiles(remoteFiles);
+        saveLocalFiles(remoteFiles);
+      } else {
+        setFiles(initialFiles);
+      }
+
+      if (remoteTrash && remoteTrash.length > 0) {
+        setTrash(remoteTrash);
+        saveLocalTrash(remoteTrash);
+      } else {
+        setTrash(initialTrash);
+      }
+      setIsLoadingSupabase(false);
+    } else {
+      setFiles(initialFiles);
+      setTrash(initialTrash);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshFilesData();
+    }
   }, [isAuthenticated]);
 
   // Handle Search Input -> switch to files view automatically if typing
@@ -74,10 +111,13 @@ export function App() {
     saveLocalFiles(updatedFiles);
   };
 
-  // Delete to Trash handler (30 days countdown starts)
-  const handleMoveToTrash = (fileId) => {
+  // Delete to Trash handler (moves to nemo_trash DB table if Supabase is active)
+  const handleMoveToTrash = async (fileId) => {
     const targetFile = files.find(f => f.id === fileId);
     if (!targetFile) return;
+
+    // Move in Supabase DB if configured
+    await moveToTrashService(targetFile);
 
     const remainingFiles = files.filter(f => f.id !== fileId);
     const trashItem = {
@@ -92,10 +132,13 @@ export function App() {
     saveLocalTrash(updatedTrash);
   };
 
-  // Restore from Trash handler
-  const handleRestoreFromTrash = (trashId) => {
+  // Restore from Trash handler (moves back to nemo_files DB table if Supabase is active)
+  const handleRestoreFromTrash = async (trashId) => {
     const targetTrash = trash.find(t => t.id === trashId);
     if (!targetTrash) return;
+
+    // Restore in Supabase DB if configured
+    await restoreFromTrashService(targetTrash);
 
     const remainingTrash = trash.filter(t => t.id !== trashId);
     const { deletedAt, ...restoredFile } = targetTrash;
@@ -107,16 +150,23 @@ export function App() {
     saveLocalTrash(remainingTrash);
   };
 
-  // Permanent Delete
-  const handlePermanentDelete = (trashId) => {
+  // Permanent Delete (deletes from Supabase storage bucket & DB tables)
+  const handlePermanentDelete = async (trashId) => {
+    const targetTrash = trash.find(t => t.id === trashId);
+    if (targetTrash) {
+      await deleteSupabaseFileService(targetTrash);
+    }
     const updatedTrash = trash.filter(t => t.id !== trashId);
     setTrash(updatedTrash);
     saveLocalTrash(updatedTrash);
   };
 
-  // Empty Trash
-  const handleEmptyTrash = () => {
+  // Empty Trash (deletes all trash items from Supabase & local state)
+  const handleEmptyTrash = async () => {
     if (window.confirm('Are you sure you want to permanently delete all items in trash?')) {
+      for (const item of trash) {
+        await deleteSupabaseFileService(item);
+      }
       setTrash([]);
       saveLocalTrash([]);
     }
@@ -137,7 +187,7 @@ export function App() {
 
   const handleSettingsUpdated = () => {
     setCapacityLimitState(getCapacityLimit());
-    setIsSupabaseActive(isSupabaseConfigured());
+    refreshFilesData();
   };
 
   // Compute Total Bytes Used

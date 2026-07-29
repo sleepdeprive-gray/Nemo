@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Download, 
@@ -15,16 +15,32 @@ import {
 } from 'lucide-react';
 import { formatBytes, formatDate } from '../utils/formatters';
 import { sanitizeUrl } from '../utils/security';
+import { fetchFileTextContent } from '../services/storageService';
 
 export const FileViewerModal = ({ file, onClose, onDelete }) => {
   const [copied, setCopied] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [remoteContent, setRemoteContent] = useState('');
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const audioRef = useRef(null);
 
-  if (!file) return null;
+  const safeUrl = sanitizeUrl(file?.url);
 
-  const safeUrl = sanitizeUrl(file.url);
+  useEffect(() => {
+    if (!file) return;
+    if (file.content) {
+      setRemoteContent(file.content);
+    } else if (safeUrl && (file.category === 'code' || file.type?.startsWith('text/') || file.name?.endsWith('.json') || file.name?.endsWith('.js') || file.name?.endsWith('.sql') || file.name?.endsWith('.md') || file.name?.endsWith('.html') || file.name?.endsWith('.css') || file.name?.endsWith('.txt'))) {
+      setIsLoadingContent(true);
+      fetchFileTextContent(safeUrl).then(text => {
+        setRemoteContent(text || `// File: ${file.name}\n// Direct download link available in sidebar.`);
+        setIsLoadingContent(false);
+      });
+    }
+  }, [file, safeUrl]);
+
+  if (!file) return null;
 
   const handleCopyUrl = () => {
     if (safeUrl) {
@@ -35,8 +51,9 @@ export const FileViewerModal = ({ file, onClose, onDelete }) => {
   };
 
   const handleCopyContent = () => {
-    if (file.content) {
-      navigator.clipboard.writeText(file.content);
+    const textToCopy = remoteContent || file.content;
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -47,6 +64,7 @@ export const FileViewerModal = ({ file, onClose, onDelete }) => {
       const a = document.createElement('a');
       a.href = safeUrl;
       a.download = file.name;
+      a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.click();
     }
@@ -61,7 +79,8 @@ export const FileViewerModal = ({ file, onClose, onDelete }) => {
   };
 
   const getCodeContent = () => {
-    return file.content || `// File: ${file.name}\n// Direct download link available in sidebar.`;
+    if (isLoadingContent) return '// Fetching file content from Supabase...';
+    return remoteContent || file.content || `// File: ${file.name}\n// Direct download link available in sidebar.`;
   };
 
   return (
