@@ -10,34 +10,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
 **A high-performance, feature-rich cloud file management system built with React, Vite, and Supabase.**  
-*Featuring a cyberpunk glassmorphism UI, hybrid storage fallback, interactive analytics, and 30-day trash lifecycle management.*
+*Featuring a hybrid storage fallback, interactive analytics, and 30-day trash lifecycle management.*
 
-[Features](#key-features) • [Design System](#design-system--aesthetics) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Supabase Setup](#supabase-setup) • [License](#license)
+[Features](#key-features) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Supabase Setup](#supabase-setup) • [License](#license)
 
 </div>
-
----
-
-## Design System & Aesthetics
-
-Nemo Cloud Storage features a custom-built Glassmorphism Dark Theme designed with HSL color tokens, micro-animations, and dynamic visual feedback.
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  GLASSMORPHISM PALETTE & UI COMPONENTS                                 │
-├────────────────────────────────────────────────────────────────────────┤
-│  Primary Neon Accent  : hsl(190, 100%, 50%)  [#00f2ff - Cyan Glow]   │
-│  Secondary Violet     : hsl(270, 90%, 65%)   [#ad52ff - Neon Violet] │
-│  Background Slate     : hsl(222, 47%, 11%)   [#0f172a - Deep Dark]   │
-│  Glass Cards          : rgba(15, 23, 42, 0.75) + 16px Blur          │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### UI Highlights
-- **Dynamic Glassmorphism**: Translucent card containers with subtle borders, glowing drop-shadows, and smooth backdrop blurs.
-- **Interactive Storage Gauge**: Live visual progress bar with dynamic color transitions (Cyan to Yellow to Crimson) based on storage capacity.
-- **Responsive Layout**: Mobile-first fluid navigation with collapsible sidebars and responsive file grids.
-- **Micro-Animations**: Hover elevation, subtle status badges, modal scale-in effects, and smooth view transitions.
 
 ---
 
@@ -76,7 +53,7 @@ Nemo Cloud Storage features a custom-built Glassmorphism Dark Theme designed wit
 | **Build Tool** | `Vite 5.4` | Fast HMR and optimized production bundles |
 | **Icons & UI** | `Lucide React` | Clean, modern vector icon set |
 | **Database & Storage** | `Supabase JS` | Cloud Object Storage buckets + PostgreSQL RLS policies |
-| **Styling** | `Vanilla CSS3` | Custom design tokens, CSS variables, glassmorphism, animations |
+| **Styling** | `Vanilla CSS3` | Custom design tokens, CSS variables, animations |
 
 ---
 
