@@ -53,7 +53,7 @@ export const Dashboard = ({
       : 'other';
     if (categories[catKey]) {
       categories[catKey].count += 1;
-      categories[catKey].size += f.size || 0;
+      categories[catKey].size += Number(f?.size) || 0;
     }
   });
 

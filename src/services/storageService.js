@@ -27,7 +27,7 @@ export const loadLocalState = () => {
   const storedFiles = localStorage.getItem(FILES_STORAGE_KEY);
   if (storedFiles) {
     try {
-      files = JSON.parse(storedFiles);
+      files = JSON.parse(storedFiles).map(f => ({ ...f, size: Number(f.size) || 0 }));
     } catch (e) {
       files = INITIAL_FILES;
     }
@@ -39,7 +39,7 @@ export const loadLocalState = () => {
   const storedTrash = localStorage.getItem(TRASH_STORAGE_KEY);
   if (storedTrash) {
     try {
-      trash = JSON.parse(storedTrash);
+      trash = JSON.parse(storedTrash).map(t => ({ ...t, size: Number(t.size) || 0 }));
     } catch (e) {
       trash = INITIAL_TRASH;
     }
@@ -110,7 +110,7 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     // 3. Store in DB if nemo_files table exists
     const dbRecord = {
       name: safeName,
-      size: fileObj.size,
+      size: Number(fileObj.size) || 0,
       type: fileObj.type || 'application/octet-stream',
       category,
       url: publicUrl,
@@ -137,7 +137,7 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     const newRecord = {
       id: insertedId,
       name: safeName,
-      size: fileObj.size,
+      size: Number(fileObj.size) || 0,
       type: fileObj.type || 'application/octet-stream',
       category,
       uploadedAt: new Date().toISOString(),
@@ -158,7 +158,7 @@ export const uploadFileService = async (fileObj, customTags = []) => {
     return {
       id: `f-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       name: safeName,
-      size: fileObj.size,
+      size: Number(fileObj.size) || 0,
       type: fileObj.type || 'application/octet-stream',
       category,
       uploadedAt: new Date().toISOString(),
@@ -241,7 +241,7 @@ export const fetchSupabaseFiles = async () => {
         return {
           id: obj.id || obj.name,
           name: safeName,
-          size: obj.metadata?.size || 0,
+          size: Number(obj.metadata?.size || obj.size || 0),
           type: obj.metadata?.mimetype || 'application/octet-stream',
           category,
           url: publicUrlData?.publicUrl || '',

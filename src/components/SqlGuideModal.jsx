@@ -59,12 +59,29 @@ FOR ALL
 USING (true)
 WITH CHECK (true);
 
--- 3. Create Storage Bucket (Run in Supabase Storage or SQL)
+-- 3. Create Nemo Config Table (Passcode Cloud Sync)
+CREATE TABLE IF NOT EXISTS public.nemo_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security (RLS) on nemo_config
+ALTER TABLE public.nemo_config ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS Policy for nemo_config
+CREATE POLICY "Allow access to nemo_config"
+ON public.nemo_config
+FOR ALL
+USING (true)
+WITH CHECK (true);
+
+-- 4. Create Storage Bucket (Run in Supabase Storage or SQL)
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('nemo-files', 'nemo-files', true)
 ON CONFLICT (id) DO NOTHING;
 
--- 4. Enable RLS and set Storage Object Policies for nemo-files bucket
+-- 5. Enable RLS and set Storage Object Policies for nemo-files bucket
 CREATE POLICY "Nemo Files Bucket Select Access" 
 ON storage.objects FOR SELECT 
 USING (bucket_id = 'nemo-files');

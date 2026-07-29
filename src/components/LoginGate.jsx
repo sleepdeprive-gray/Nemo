@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Lock, 
-  KeyRound, 
   Eye, 
   EyeOff, 
   ShieldCheck, 
@@ -41,11 +40,6 @@ export const LoginGate = ({ onAuthenticated }) => {
       setIsLoading(false);
       setError(true);
     }
-  };
-
-  const handleQuickFill = () => {
-    setPassword('nemo');
-    setError(false);
   };
 
   return (
@@ -95,23 +89,6 @@ export const LoginGate = ({ onAuthenticated }) => {
           {/* Form with Centered Layout */}
           <form onSubmit={handleLogin} className="space-y-6 relative z-10 animate-fade-in-up stagger-3 text-center">
             <div className="space-y-2">
-              {/* Passcode Label & Quick Fill Helper Pill (Centered) */}
-              <div className="flex items-center justify-center gap-2.5">
-                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Access Passcode</span>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleQuickFill}
-                  title="Click to fill default passcode"
-                  className="text-[10px] font-mono px-2.5 py-0.5 rounded-lg bg-zinc-900/90 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1 cursor-pointer btn-press"
-                >
-                  <span>Default:</span>
-                  <span className="font-bold underline">nemo</span>
-                </button>
-              </div>
 
               {/* Password Input Field (Centered Input & Text) */}
               <div className="relative">

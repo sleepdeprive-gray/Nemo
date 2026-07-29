@@ -43,6 +43,29 @@ export function App() {
   const [isSupabaseActive, setIsSupabaseActive] = useState(isSupabaseConfigured());
   const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
 
+  // Dynamic Browser Tab Title Management
+  useEffect(() => {
+    if (!isAuthenticated) {
+      document.title = 'Nemo';
+    } else {
+      switch (currentTab) {
+        case 'files':
+          document.title = 'Nemo - Explorer';
+          break;
+        case 'favorites':
+          document.title = 'Nemo - Starred Files';
+          break;
+        case 'trash':
+          document.title = 'Nemo - Trash Bin';
+          break;
+        case 'dashboard':
+        default:
+          document.title = 'Nemo - Dashboard';
+          break;
+      }
+    }
+  }, [isAuthenticated, currentTab]);
+
   // Check initial authentication
   useEffect(() => {
     const authSession = sessionStorage.getItem('nemo_authenticated');
@@ -230,8 +253,8 @@ export function App() {
     refreshFilesData();
   };
 
-  // Compute Total Bytes Used
-  const totalUsedBytes = files.reduce((acc, file) => acc + (file.size || 0), 0);
+  // Compute Total Bytes Used (Strict numeric summation)
+  const totalUsedBytes = files.reduce((acc, file) => acc + (Number(file?.size) || 0), 0);
 
   if (!isAuthenticated) {
     return <LoginGate onAuthenticated={() => setIsAuthenticated(true)} />;

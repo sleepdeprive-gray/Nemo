@@ -185,16 +185,32 @@ export const FileViewerModal = ({ file, onClose, onDelete }) => {
             </div>
           )}
 
-          {/* PDF Viewer with Secure Sandbox */}
+          {/* PDF Viewer */}
           {file.category === 'pdf' && safeUrl && (
-            <div className="w-full h-full p-2">
-              <iframe
-                src={safeUrl}
-                title={file.name}
-                sandbox="allow-scripts allow-same-origin allow-forms"
-                referrerPolicy="no-referrer"
-                className="w-full h-full rounded-2xl border border-white/10 bg-white shadow-2xl"
-              />
+            <div className="w-full h-full p-2 flex flex-col items-center justify-center relative">
+              <object
+                data={safeUrl}
+                type="application/pdf"
+                className="w-full h-full rounded-2xl border border-white/10 bg-white shadow-2xl overflow-hidden"
+              >
+                <iframe
+                  src={safeUrl}
+                  title={file.name}
+                  className="w-full h-full rounded-2xl border border-white/10 bg-white shadow-2xl"
+                >
+                  <div className="flex flex-col items-center justify-center h-full p-6 text-center text-zinc-300 space-y-4 bg-zinc-950 rounded-2xl border border-white/10">
+                    <p className="text-sm font-bold text-white">PDF preview blocked by browser policy.</p>
+                    <a
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-gradient-primary px-5 py-2.5 rounded-xl text-black font-extrabold text-xs uppercase tracking-wider shadow-lg btn-press"
+                    >
+                      Open PDF in New Tab
+                    </a>
+                  </div>
+                </iframe>
+              </object>
             </div>
           )}
 
