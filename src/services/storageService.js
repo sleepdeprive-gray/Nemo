@@ -208,7 +208,8 @@ export const fetchSupabaseFiles = async () => {
       .select('*')
       .order('uploaded_at', { ascending: false });
 
-    if (!dbError && dbFiles && dbFiles.length > 0) {
+    // If query succeeded (no error), DB table is authoritative!
+    if (!dbError && dbFiles !== null) {
       return dbFiles.map(row => ({
         id: row.id,
         name: row.name,
@@ -223,7 +224,7 @@ export const fetchSupabaseFiles = async () => {
       }));
     }
 
-    // 2. Fallback: List directly from Storage Bucket nemo-files
+    // 2. Fallback ONLY if DB table nemo_files does not exist
     const { data: storageObjects, error: storageError } = await supabase.storage
       .from(bucketName)
       .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
@@ -251,6 +252,7 @@ export const fetchSupabaseFiles = async () => {
         };
       });
     }
+    return [];
   } catch (err) {
     console.error('Error fetching Supabase files:', err);
   }
@@ -271,7 +273,7 @@ export const fetchSupabaseTrash = async () => {
       .select('*')
       .order('deleted_at', { ascending: false });
 
-    if (!error && trashRows && trashRows.length > 0) {
+    if (!error && trashRows !== null) {
       return trashRows.map(row => ({
         id: row.id,
         originalFileId: row.original_file_id || row.id,
@@ -303,29 +305,37 @@ export const moveToTrashService = async (file) => {
   try {
     // 1. Delete row from nemo_files DB table
     if (isValidUuid(file.id)) {
-      await supabase.from('nemo_files').delete().eq('id', file.id).catch(() => {});
+      try { await supabase.from('nemo_files').delete().eq('id', file.id); } catch (e) {}
     }
     if (file.url) {
-      await supabase.from('nemo_files').delete().eq('url', file.url).catch(() => {});
+      try { await supabase.from('nemo_files').delete().eq('url', file.url); } catch (e) {}
+    }
+    if (file.name) {
+      try { await supabase.from('nemo_files').delete().eq('name', file.name); } catch (e) {}
     }
 
     // 2. Insert row into nemo_trash DB table
     const trashRecord = {
       original_file_id: isValidUuid(file.id) ? file.id : null,
-      name: file.name,
-      size: file.size,
+      name: file.name || 'Untitled',
+      size: file.size || 0,
       type: file.type || 'application/octet-stream',
       category: file.category || 'other',
-      url: file.url || '',
+      url: file.url || 'https://nemo.local/file',
       deleted_at: new Date().toISOString()
     };
     if (isValidUuid(file.id)) {
       trashRecord.id = file.id;
     }
 
-    await supabase.from('nemo_trash').insert([trashRecord]).catch((err) => {
-      console.warn('nemo_trash insert fallback:', err);
-    });
+    try {
+      const { error: insertErr } = await supabase.from('nemo_trash').insert([trashRecord]);
+      if (insertErr) {
+        console.warn('nemo_trash insert info:', insertErr.message);
+      }
+    } catch (err) {
+      console.warn('nemo_trash insert error:', err);
+    }
 
     return true;
   } catch (err) {
@@ -345,10 +355,10 @@ export const restoreFromTrashService = async (trashItem) => {
   try {
     // 1. Delete from nemo_trash DB table
     if (isValidUuid(trashItem.id)) {
-      await supabase.from('nemo_trash').delete().eq('id', trashItem.id).catch(() => {});
+      try { await supabase.from('nemo_trash').delete().eq('id', trashItem.id); } catch (e) {}
     }
     if (trashItem.url) {
-      await supabase.from('nemo_trash').delete().eq('url', trashItem.url).catch(() => {});
+      try { await supabase.from('nemo_trash').delete().eq('url', trashItem.url); } catch (e) {}
     }
 
     // 2. Re-insert into nemo_files DB table
@@ -369,9 +379,11 @@ export const restoreFromTrashService = async (trashItem) => {
       fileRecord.id = trashItem.id;
     }
 
-    await supabase.from('nemo_files').insert([fileRecord]).catch((err) => {
-      console.warn('nemo_files re-insert fallback:', err);
-    });
+    try {
+      await supabase.from('nemo_files').insert([fileRecord]);
+    } catch (err) {
+      console.warn('nemo_files re-insert error:', err);
+    }
 
     return true;
   } catch (err) {
@@ -394,28 +406,30 @@ export const deleteSupabaseFileService = async (file) => {
 
     // 1. Delete from Supabase Storage Bucket
     if (storagePath) {
-      await supabase.storage
-        .from(bucketName)
-        .remove([storagePath]);
+      try {
+        await supabase.storage
+          .from(bucketName)
+          .remove([storagePath]);
+      } catch (e) {}
       
       // Also try with original name if different
       if (file.name && file.name !== storagePath) {
-        await supabase.storage.from(bucketName).remove([file.name]);
+        try { await supabase.storage.from(bucketName).remove([file.name]); } catch (e) {}
       }
     }
 
     // 2. Delete from Supabase DB nemo_files and nemo_trash tables
     if (isValidUuid(file.id)) {
-      await supabase.from('nemo_files').delete().eq('id', file.id).catch(() => {});
-      await supabase.from('nemo_trash').delete().eq('id', file.id).catch(() => {});
+      try { await supabase.from('nemo_files').delete().eq('id', file.id); } catch (e) {}
+      try { await supabase.from('nemo_trash').delete().eq('id', file.id); } catch (e) {}
     }
     if (file.url) {
-      await supabase.from('nemo_files').delete().eq('url', file.url).catch(() => {});
-      await supabase.from('nemo_trash').delete().eq('url', file.url).catch(() => {});
+      try { await supabase.from('nemo_files').delete().eq('url', file.url); } catch (e) {}
+      try { await supabase.from('nemo_trash').delete().eq('url', file.url); } catch (e) {}
     }
     if (file.name) {
-      await supabase.from('nemo_files').delete().eq('name', file.name).catch(() => {});
-      await supabase.from('nemo_trash').delete().eq('name', file.name).catch(() => {});
+      try { await supabase.from('nemo_files').delete().eq('name', file.name); } catch (e) {}
+      try { await supabase.from('nemo_trash').delete().eq('name', file.name); } catch (e) {}
     }
 
     return true;

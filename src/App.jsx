@@ -53,7 +53,7 @@ export function App() {
 
   // Load files & trash data
   const refreshFilesData = async () => {
-    const { files: initialFiles, trash: initialTrash } = loadLocalState();
+    const { files: localFiles, trash: localTrash } = loadLocalState();
     setCapacityLimitState(getCapacityLimit());
     const supabaseActive = isSupabaseConfigured();
     setIsSupabaseActive(supabaseActive);
@@ -65,23 +65,44 @@ export function App() {
         fetchSupabaseTrash()
       ]);
 
-      if (remoteFiles && remoteFiles.length > 0) {
-        setFiles(remoteFiles);
-        saveLocalFiles(remoteFiles);
-      } else {
-        setFiles(initialFiles);
+      // If remoteTrash table exists and returns data (or empty array), use it.
+      // If remoteTrash is null (nemo_trash table not created in Supabase), preserve localTrash!
+      const effectiveTrash = (remoteTrash !== null && Array.isArray(remoteTrash)) 
+        ? remoteTrash 
+        : localTrash;
+      setTrash(effectiveTrash);
+      saveLocalTrash(effectiveTrash);
+
+      let effectiveFiles = (remoteFiles !== null && Array.isArray(remoteFiles)) 
+        ? remoteFiles 
+        : localFiles;
+
+      // Filter active files against Trash items so trashed items NEVER show on Dashboard or Files
+      if (effectiveTrash.length > 0) {
+        effectiveFiles = effectiveFiles.filter(file => 
+          !effectiveTrash.some(t => 
+            (t.id && t.id === file.id) || 
+            (t.url && file.url && t.url === file.url) || 
+            (t.name && file.name && t.name === file.name) ||
+            (t.storagePath && file.storagePath && t.storagePath === file.storagePath)
+          )
+        );
       }
 
-      if (remoteTrash && remoteTrash.length > 0) {
-        setTrash(remoteTrash);
-        saveLocalTrash(remoteTrash);
-      } else {
-        setTrash(initialTrash);
-      }
+      setFiles(effectiveFiles);
+      saveLocalFiles(effectiveFiles);
       setIsLoadingSupabase(false);
     } else {
-      setFiles(initialFiles);
-      setTrash(initialTrash);
+      const filteredFiles = localFiles.filter(file => 
+        !localTrash.some(t => 
+          (t.id && t.id === file.id) || 
+          (t.url && file.url && t.url === file.url) || 
+          (t.name && file.name && t.name === file.name) ||
+          (t.storagePath && file.storagePath && t.storagePath === file.storagePath)
+        )
+      );
+      setFiles(filteredFiles);
+      setTrash(localTrash);
     }
   };
 
@@ -116,20 +137,24 @@ export function App() {
     const targetFile = files.find(f => f.id === fileId);
     if (!targetFile) return;
 
-    // Move in Supabase DB if configured
-    await moveToTrashService(targetFile);
-
     const remainingFiles = files.filter(f => f.id !== fileId);
     const trashItem = {
       ...targetFile,
       deletedAt: new Date().toISOString()
     };
 
-    const updatedTrash = [trashItem, ...trash];
+    const updatedTrash = [trashItem, ...trash.filter(t => t.id !== trashItem.id)];
+    
+    // Commit UI changes & localStorage immediately
     setFiles(remainingFiles);
     setTrash(updatedTrash);
     saveLocalFiles(remainingFiles);
     saveLocalTrash(updatedTrash);
+
+    // Call Supabase service asynchronously
+    if (isSupabaseConfigured()) {
+      await moveToTrashService(targetFile);
+    }
   };
 
   // Restore from Trash handler (moves back to nemo_files DB table if Supabase is active)
@@ -137,38 +162,53 @@ export function App() {
     const targetTrash = trash.find(t => t.id === trashId);
     if (!targetTrash) return;
 
-    // Restore in Supabase DB if configured
-    await restoreFromTrashService(targetTrash);
-
     const remainingTrash = trash.filter(t => t.id !== trashId);
     const { deletedAt, ...restoredFile } = targetTrash;
 
-    const updatedFiles = [restoredFile, ...files];
+    const updatedFiles = [restoredFile, ...files.filter(f => f.id !== restoredFile.id)];
+
+    // Commit UI changes & localStorage immediately
     setFiles(updatedFiles);
     setTrash(remainingTrash);
     saveLocalFiles(updatedFiles);
     saveLocalTrash(remainingTrash);
+
+    // Call Supabase service asynchronously
+    if (isSupabaseConfigured()) {
+      await restoreFromTrashService(targetTrash);
+    }
   };
 
   // Permanent Delete (deletes from Supabase storage bucket & DB tables)
   const handlePermanentDelete = async (trashId) => {
     const targetTrash = trash.find(t => t.id === trashId);
-    if (targetTrash) {
+
+    const updatedTrash = trash.filter(t => t.id !== trashId);
+    const updatedFiles = files.filter(f => f.id !== trashId);
+
+    // Commit UI changes & localStorage immediately
+    setTrash(updatedTrash);
+    setFiles(updatedFiles);
+    saveLocalFiles(updatedFiles);
+    saveLocalTrash(updatedTrash);
+
+    if (targetTrash && isSupabaseConfigured()) {
       await deleteSupabaseFileService(targetTrash);
     }
-    const updatedTrash = trash.filter(t => t.id !== trashId);
-    setTrash(updatedTrash);
-    saveLocalTrash(updatedTrash);
   };
 
   // Empty Trash (deletes all trash items from Supabase & local state)
   const handleEmptyTrash = async () => {
     if (window.confirm('Are you sure you want to permanently delete all items in trash?')) {
-      for (const item of trash) {
-        await deleteSupabaseFileService(item);
-      }
+      const trashCopy = [...trash];
       setTrash([]);
       saveLocalTrash([]);
+
+      if (isSupabaseConfigured()) {
+        for (const item of trashCopy) {
+          await deleteSupabaseFileService(item);
+        }
+      }
     }
   };
 
