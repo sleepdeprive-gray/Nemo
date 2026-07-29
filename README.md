@@ -1,4 +1,4 @@
-# Nemo Cloud File Storage
+# Nemo Cloud Storage Integrated Solution
 
 ![Nemo Storage Banner](./public/nemo_storage_banner.jpg)
 
