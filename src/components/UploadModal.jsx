@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, File, Check, Tag, Sparkles, AlertTriangle } from 'lucide-react';
+import { X, Upload, File, Check, Tag, Sparkles, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 import { formatBytes } from '../utils/formatters';
 import { isAllowedFileType, sanitizeFilename, sanitizeTag } from '../utils/security';
+import { isImgBbEnabled } from '../services/imgbbService';
 
 export const UploadModal = ({ isOpen, onClose, onUploadComplete }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -14,6 +15,8 @@ export const UploadModal = ({ isOpen, onClose, onUploadComplete }) => {
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
+
+  const imgBbActive = isImgBbEnabled();
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -167,6 +170,19 @@ export const UploadModal = ({ isOpen, onClose, onUploadComplete }) => {
             </span>
           </div>
         </div>
+
+        {/* ImgBB CDN Status Banner */}
+        {imgBbActive && (
+          <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-between text-xs text-pink-300 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-pink-400 flex-shrink-0" />
+              <span>Image uploads will be hosted on <strong>ImgBB CDN</strong></span>
+            </div>
+            <span className="text-[10px] font-mono bg-pink-500/20 px-2 py-0.5 rounded-md text-pink-300 font-bold uppercase">
+              ImgBB Enabled
+            </span>
+          </div>
+        )}
 
         {/* File Security Warning */}
         {fileError && (
